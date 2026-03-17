@@ -27,12 +27,6 @@ variable "analysis_days" {
   default     = 90
 }
 
-variable "max_monitors" {
-  description = "Maximum number of monitors to analyze per run (controls cost and runtime)"
-  type        = number
-  default     = 200
-}
-
 variable "noisy_threshold" {
   description = "Alert count above which a monitor is classified as noisy"
   type        = number
@@ -45,16 +39,28 @@ variable "slow_resolution_hours" {
   default     = 4
 }
 
-variable "schedule_expression" {
-  description = "EventBridge schedule expression for automatic runs. Set to empty string to disable. Default: daily at 06:00 UTC."
-  type        = string
-  default     = "cron(0 6 * * ? *)"
+variable "monitor_envs" {
+  description = "List of Datadog environment tag values to analyze. Monitors must have at least one matching env:<value> tag. Configurable so environments can be added/removed without code changes."
+  type        = list(string)
+  default     = ["production", "production-pi"]
 }
 
-variable "report_s3_bucket" {
-  description = "S3 bucket name for archiving Markdown reports and raw stats JSON. Leave empty to disable archiving."
+variable "vpc_subnet_ids" {
+  description = "List of VPC subnet IDs for Lambda VPC deployment. Follow the same pattern as make-infra/modules/datadog_lambda."
+  type        = list(string)
+  default     = []
+}
+
+variable "security_group_ids" {
+  description = "List of security group IDs for Lambda VPC deployment."
+  type        = list(string)
+  default     = []
+}
+
+variable "schedule_expression" {
+  description = "EventBridge schedule expression for automatic runs. Set to empty string to disable. Default: every Monday at 08:30 UTC (before oncall rota handover at 09:00)."
   type        = string
-  default     = ""
+  default     = "cron(30 8 ? * MON *)"
 }
 
 variable "log_retention_days" {

@@ -24,6 +24,8 @@ venv/
 # Build artifacts
 .build/
 src/lambda.zip
+# Vendored Lambda zip is committed intentionally
+!modules/noise-analyzer/lambda.zip
 
 # Reports (generated output)
 *.md.out

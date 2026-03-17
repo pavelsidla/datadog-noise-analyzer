@@ -3,19 +3,17 @@
 Datadog Alert Noise Analyzer for make-infra monitors.
 
 Queries Datadog API for the last N days of alert history,
-identifies noisy / dead / slow-resolution monitors,
-and uses Claude to generate actionable recommendations.
+identifies noisy / dead / slow-resolution monitors.
 
 Usage:
   python noise_analyzer.py --days 90 --output report.md
   python noise_analyzer.py --days 90 --dry-run
   python noise_analyzer.py --days 30 --filter "rds_*"
-  python noise_analyzer.py --days 90 --generate-tf-suggestions --tf-repo ~/projects/MAKE/make-infra
+  python noise_analyzer.py --days 90 --env production --env production-pi
 
 Environment variables:
   DD_API_KEY       Datadog API key (OR use AWS Secrets Manager — see AGENTS.md)
   DD_APP_KEY       Datadog Application key
-  ANTHROPIC_API_KEY  For AI recommendations
   AWS_PROFILE      If using Secrets Manager to get Datadog credentials
 """
 import argparse
@@ -28,8 +26,6 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
-
-import anthropic
 
 # ─────────────────────────────────────────────
 # Data types
@@ -121,7 +117,7 @@ def get_api_config(api_key: str, app_key: str):
         sys.exit(1)
 
 
-def list_all_monitors(config, name_filter: Optional[str] = None) -> list[MonitorInfo]:
+def list_all_monitors(config, env_filter: Optional[list[str]] = None, name_filter: Optional[str] = None) -> list[MonitorInfo]:
     """List all Datadog monitors (paginated)."""
     from datadog_api_client import ApiClient
     from datadog_api_client.v1.api.monitors_api import MonitorsApi
@@ -157,6 +153,12 @@ def list_all_monitors(config, name_filter: Optional[str] = None) -> list[Monitor
                 break
             page += 1
             time.sleep(0.2)  # Respect rate limits
+
+    if env_filter:
+        monitors = [
+            m for m in monitors
+            if any(f"env:{e}" in m.tags for e in env_filter)
+        ]
 
     return monitors
 
@@ -202,10 +204,10 @@ def get_monitor_events(config, monitor_id: int, days: int) -> list[dict]:
 # Analysis logic
 # ─────────────────────────────────────────────
 
-# Thresholds — adjust these based on your team's norms
-NOISY_THRESHOLD = 50        # Monitors firing > 50 times in the period
-DEAD_THRESHOLD = 0          # Monitors that never fired = dead
-SLOW_RESOLUTION_HOURS = 4   # Avg resolution > 4h = slow
+# Thresholds — read from environment, overridable via Terraform variable
+NOISY_THRESHOLD = int(os.environ.get("NOISY_THRESHOLD", "50"))
+DEAD_THRESHOLD = 0
+SLOW_RESOLUTION_HOURS = float(os.environ.get("SLOW_RESOLUTION_HOURS", "4"))
 
 
 def calculate_avg_resolution_hours(events: list[dict]) -> float:
@@ -493,10 +495,11 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="Use mock data, don't call Datadog API")
     parser.add_argument("--filter", help="Filter monitors by name pattern (e.g. 'rds_*')")
     parser.add_argument("--max-monitors", type=int, default=200, help="Max monitors to analyze")
-    parser.add_argument("--generate-tf-suggestions", action="store_true",
-                        help="Generate Terraform threshold suggestions")
-    parser.add_argument("--tf-repo", help="Path to make-infra repo root (for TF suggestions)")
+    parser.add_argument("--env", action="append", dest="env_filter",
+                        metavar="ENV", help="Filter to monitors with this env tag (can repeat). E.g. --env production --env production-pi")
     args = parser.parse_args()
+
+    env_filter = args.env_filter  # list[str] | None
 
     if args.dry_run:
         print("DRY RUN: Using mock monitor data", file=sys.stderr)
@@ -514,15 +517,10 @@ def main():
         config = get_api_config(api_key, app_key)
 
         print(f"Fetching monitors from Datadog API...", file=sys.stderr)
-        monitors = list_all_monitors(config, name_filter=args.filter)
+        monitors = list_all_monitors(config, env_filter=env_filter, name_filter=args.filter)
         print(f"Found {len(monitors)} monitors to analyze", file=sys.stderr)
 
         result = run_analysis(config, monitors, args.days, max_monitors=args.max_monitors)
-
-    # Generate AI report
-    print("Generating AI recommendations...", file=sys.stderr)
-    tf_repo = Path(args.tf_repo) if args.tf_repo else None
-    result.ai_report = generate_ai_report(result, tf_repo_root=tf_repo)
 
     # Format report
     report = format_report(result)

@@ -9,28 +9,16 @@ variable "datadog_secret_arn" {
   type        = string
 }
 
-variable "report_s3_bucket" {
-  description = "S3 bucket for report archiving (empty = disabled)"
-  type        = string
-  default     = ""
-}
-
 variable "schedule_expression" {
-  description = "EventBridge schedule expression (default: daily at 06:00 UTC)"
+  description = "EventBridge schedule expression. Default: every Monday at 08:30 UTC (before oncall rota handover at 09:00)."
   type        = string
-  default     = "cron(0 6 * * ? *)"
+  default     = "cron(30 8 ? * MON *)"
 }
 
 variable "analysis_days" {
   description = "Days of monitor history to analyze"
   type        = number
   default     = 90
-}
-
-variable "max_monitors" {
-  description = "Maximum monitors to analyze per run"
-  type        = number
-  default     = 200
 }
 
 variable "noisy_threshold" {
@@ -43,6 +31,24 @@ variable "slow_resolution_hours" {
   description = "MTTR threshold (hours) for 'slow' classification"
   type        = number
   default     = 4
+}
+
+variable "monitor_envs" {
+  description = "Datadog environment tag values to analyze (e.g. production, production-pi)"
+  type        = list(string)
+  default     = ["production", "production-pi"]
+}
+
+variable "vpc_subnet_ids" {
+  description = "VPC subnet IDs for Lambda"
+  type        = list(string)
+  default     = []
+}
+
+variable "security_group_ids" {
+  description = "Security group IDs for Lambda VPC deployment"
+  type        = list(string)
+  default     = []
 }
 
 variable "log_retention_days" {
