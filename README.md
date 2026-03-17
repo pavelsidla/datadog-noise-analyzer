@@ -130,7 +130,7 @@ Thresholds are configurable via Terraform variables (`noisy_threshold`, `slow_re
 │   ├── simple/                Minimal usage
 │   └── complete/              Full production setup with S3 + lifecycle
 ├── scripts/build_lambda.sh    Lambda zip builder
-└── .github/workflows/         CI/CD (pre-commit + semantic release)
+└── .github/workflows/         CI/CD (semantic release)
 ```
 
 ## Task Split
