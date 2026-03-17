@@ -163,41 +163,50 @@ def list_all_monitors(config, env_filter: Optional[list[str]] = None, name_filte
     return monitors
 
 
+_EVENTS_API_MAX_WINDOW_DAYS = 30  # Datadog Events API hard limit: 2764800s ≈ 32 days
+
+
 def get_monitor_events(config, monitor_id: int, days: int) -> list[dict]:
     """
     Get alert events for a specific monitor over the last N days.
 
-    Returns list of event dicts with: alert_type, date_happened, monitor_id
+    The Events API limits each request to 30 days, so longer windows are
+    fetched in chunks and merged.
+
+    Returns list of event dicts with: alert_type, date_happened, title
     """
     from datadog_api_client import ApiClient
     from datadog_api_client.v1.api.events_api import EventsApi
 
-    end = int(time.time())
-    start = end - (days * 24 * 3600)
+    now = int(time.time())
+    overall_start = now - (days * 24 * 3600)
+    all_events: list[dict] = []
 
-    try:
-        with ApiClient(config) as api_client:
-            api = EventsApi(api_client)
-            result = api.list_events(
-                start=start,
-                end=end,
-                sources="monitor",
-                tags=f"monitor_id:{monitor_id}",
-            )
+    # Walk backwards in 30-day windows from now to overall_start
+    window_end = now
+    while window_end > overall_start:
+        window_start = max(overall_start, window_end - (_EVENTS_API_MAX_WINDOW_DAYS * 24 * 3600))
+        try:
+            with ApiClient(config) as api_client:
+                api = EventsApi(api_client)
+                result = api.list_events(
+                    start=window_start,
+                    end=window_end,
+                    sources="monitor",
+                    tags=f"monitor_id:{monitor_id}",
+                )
+                if result and result.events:
+                    for event in result.events:
+                        all_events.append({
+                            "alert_type": getattr(event, "alert_type", "unknown"),
+                            "date_happened": getattr(event, "date_happened", 0),
+                            "title": getattr(event, "title", ""),
+                        })
+        except Exception as e:
+            print(f"  Warning: Failed to get events for monitor {monitor_id}: {e}", file=sys.stderr)
+        window_end = window_start
 
-            events = []
-            if result and result.events:
-                for event in result.events:
-                    events.append({
-                        "alert_type": getattr(event, "alert_type", "unknown"),
-                        "date_happened": getattr(event, "date_happened", 0),
-                        "title": getattr(event, "title", ""),
-                    })
-            return events
-
-    except Exception as e:
-        print(f"  Warning: Failed to get events for monitor {monitor_id}: {e}", file=sys.stderr)
-        return []
+    return all_events
 
 
 # ─────────────────────────────────────────────
