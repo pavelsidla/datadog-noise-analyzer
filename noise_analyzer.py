@@ -161,41 +161,57 @@ def list_all_monitors(config, env_filter: Optional[list[str]] = None, name_filte
     return monitors
 
 
-def get_monitor_events(config, monitor_id: int, days: int) -> list[dict]:
+def get_monitor_state(config, monitor_id: int, days: int) -> dict:
     """
-    Get alert events for a specific monitor over the last N days.
+    Fetch per-group state via GET /api/v1/monitor/{id}?group_states=all.
 
-    Returns list of event dicts with: alert_type, date_happened, monitor_id
+    This is the chosen data source for v1. The Events API (source:alert) was evaluated
+    but rejected: ~9500 events/day × 3.5s/page × 286 pages/30d = 17 min per run.
+    Per-monitor group state (477 calls × ~2s, 8 threads) runs in ~2 minutes.
+
+    Each group provides:
+      last_triggered_ts  — when the group last entered Alert/Warn
+      last_resolved_ts   — when the group last recovered to OK
+      status             — current state (Alert / Warn / OK / No Data)
+
+    Returns dict with triggered_in_period, resolved_pairs for downstream classification.
     """
     from datadog_api_client import ApiClient
-    from datadog_api_client.v1.api.events_api import EventsApi
+    from datadog_api_client.v1.api.monitors_api import MonitorsApi
 
-    end = int(time.time())
-    start = end - (days * 24 * 3600)
+    cutoff = int(time.time()) - (days * 24 * 3600)
 
     try:
         with ApiClient(config) as api_client:
-            api = EventsApi(api_client)
-            result = api.list_events(
-                start=start,
-                end=end,
-                sources="monitor",
-                tags=f"monitor_id:{monitor_id}",
-            )
+            api = MonitorsApi(api_client)
+            m = api.get_monitor(monitor_id, group_states="all")
 
-            events = []
-            if result and result.events:
-                for event in result.events:
-                    events.append({
-                        "alert_type": getattr(event, "alert_type", "unknown"),
-                        "date_happened": getattr(event, "date_happened", 0),
-                        "title": getattr(event, "title", ""),
-                    })
-            return events
+            raw_groups = {}
+            if m.state and m.state.groups:
+                raw_groups = {name: g.to_dict() for name, g in m.state.groups.items()}
+
+            triggered_in_period = [
+                g for g in raw_groups.values()
+                if (g.get("last_triggered_ts") or 0) > cutoff
+            ]
+
+            resolved_pairs = []
+            for g in raw_groups.values():
+                t = g.get("last_triggered_ts") or 0
+                r = g.get("last_resolved_ts") or 0
+                if t > cutoff and r > t:
+                    resolved_pairs.append((t, r))
+
+            return {
+                "overall_state": str(m.overall_state),
+                "groups": raw_groups,
+                "triggered_in_period": triggered_in_period,
+                "resolved_pairs": resolved_pairs,
+            }
 
     except Exception as e:
-        print(f"  Warning: Failed to get events for monitor {monitor_id}: {e}", file=sys.stderr)
-        return []
+        print(f"  Warning: Failed to get state for monitor {monitor_id}: {e}", file=sys.stderr)
+        return {"overall_state": "unknown", "groups": {}, "triggered_in_period": [], "resolved_pairs": []}
 
 
 # ─────────────────────────────────────────────
@@ -208,47 +224,25 @@ DEAD_THRESHOLD = 0
 SLOW_RESOLUTION_HOURS = float(os.environ.get("SLOW_RESOLUTION_HOURS", "4"))
 
 
-def calculate_avg_resolution_hours(events: list[dict]) -> float:
-    """
-    Calculate average time between an alert firing and its recovery.
-    Returns hours.
-    """
-    alert_times = []
-    recovery_times = []
-
-    for event in sorted(events, key=lambda e: e.get("date_happened", 0)):
-        alert_type = event.get("alert_type", "")
-        timestamp = event.get("date_happened", 0)
-
-        if alert_type in ("error", "triggered", "alert"):
-            alert_times.append(timestamp)
-        elif alert_type in ("success", "recovered", "recovery"):
-            recovery_times.append(timestamp)
-
-    if not alert_times or not recovery_times:
-        return 0.0
-
-    # Match alerts to recoveries naively (sequential matching)
-    durations = []
-    for alert_t in alert_times:
-        # Find the first recovery after this alert
-        recovery = next((r for r in recovery_times if r > alert_t), None)
-        if recovery:
-            durations.append((recovery - alert_t) / 3600)  # seconds to hours
-
-    return sum(durations) / len(durations) if durations else 0.0
-
-
 def analyze_monitor(config, monitor: MonitorInfo, days: int) -> MonitorStats:
-    """Fetch events and categorize a single monitor."""
-    print(f"  Analyzing: {monitor.name}...", file=sys.stderr)
-    events = get_monitor_events(config, monitor.id, days)
+    """
+    Fetch per-group monitor state and categorize a single monitor.
 
-    alert_count = sum(1 for e in events if e.get("alert_type") in ("error", "triggered", "alert"))
-    recovery_count = sum(1 for e in events if e.get("alert_type") in ("success", "recovered", "recovery"))
-    no_data_count = sum(1 for e in events if "no_data" in e.get("alert_type", ""))
+    alert_count  = number of distinct groups triggered within the analysis period.
+                   For multi-group monitors (k8s, synthetics) this reflects breadth;
+                   NOISY_THRESHOLD=50 is calibrated for this unit.
+    avg_resolution = average hours between last_triggered_ts → last_resolved_ts
+                     for groups that both triggered and resolved in the period.
+    """
+    state = get_monitor_state(config, monitor.id, days)
 
-    avg_resolution = calculate_avg_resolution_hours(events)
+    alert_count = len(state["triggered_in_period"])
+    no_data_count = sum(
+        1 for g in state["groups"].values() if str(g.get("status", "")).lower() == "no data"
+    )
+    recovery_count = len(state["resolved_pairs"])
+    durations = [(r - t) / 3600 for t, r in state["resolved_pairs"]]
+    avg_resolution = sum(durations) / len(durations) if durations else 0.0
 
     stats = MonitorStats(
         monitor=monitor,
@@ -281,9 +275,8 @@ def run_analysis(
     """
     Run analysis across all monitors concurrently.
 
-    Uses ThreadPoolExecutor to fetch monitor events in parallel, reducing
-    runtime from ~400s to ~50s for 200 monitors compared to sequential fetching.
-    Each thread creates its own ApiClient, so there are no shared-state issues.
+    Fetches per-group state (GET /api/v1/monitor/{id}?group_states=all) for each monitor
+    in parallel using a thread pool. Each thread creates its own ApiClient.
     """
     result = AnalysisResult(period_days=days, total_monitors=len(monitors))
     monitors_to_analyze = monitors[:max_monitors]
