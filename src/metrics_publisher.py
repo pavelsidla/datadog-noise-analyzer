@@ -78,19 +78,24 @@ def publish_metrics(result: "AnalysisResult", config=None) -> None:
         )
 
         env_tags = [t for t in stats.monitor.tags if t.startswith("env:")]
+        # noise_score and is_dead must NOT include category in their tags.
+        # category changes over time → different tag combinations → stale ghost
+        # time series linger in Datadog for ~48h and corrupt toplist rankings.
+        # alert_count / avg_resolution_hours keep category for filtering.
+        stable_tags = [t for t in monitor_tags if not t.startswith("category:")]
         per_monitor = [
-            ("monitor_analyzer.alert_count", float(stats.alert_count)),
-            ("monitor_analyzer.avg_resolution_hours", float(stats.avg_resolution_hours)),
-            ("monitor_analyzer.is_dead", 1.0 if stats.category == "dead" else 0.0),
-            ("monitor_analyzer.noise_score", noise_score),
+            ("monitor_analyzer.alert_count", float(stats.alert_count), monitor_tags),
+            ("monitor_analyzer.avg_resolution_hours", float(stats.avg_resolution_hours), monitor_tags),
+            ("monitor_analyzer.is_dead", 1.0 if stats.category == "dead" else 0.0, stable_tags),
+            ("monitor_analyzer.noise_score", noise_score, stable_tags),
         ]
-        for metric_name, value in per_monitor:
+        for metric_name, value, tags in per_monitor:
             all_series.append(
                 MetricSeries(
                     metric=metric_name,
                     type=MetricIntakeType.GAUGE,
                     points=[MetricPoint(timestamp=now, value=value)],
-                    tags=monitor_tags + env_tags,
+                    tags=tags + env_tags,
                 )
             )
 

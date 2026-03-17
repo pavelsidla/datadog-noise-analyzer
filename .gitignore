@@ -43,3 +43,4 @@ report_*.md
 # Claude Code local memory (personal, not shared)
 .claude/
 report*.md
+modules/noise-analyzer/lambda.zip
