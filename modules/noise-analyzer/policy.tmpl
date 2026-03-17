@@ -1,0 +1,27 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "GetDatadogCredentials",
+      "Effect": "Allow",
+      "Action": [
+        "secretsmanager:GetSecretValue",
+        "secretsmanager:DescribeSecret"
+      ],
+      "Resource": "${secrets_arn}"
+    }%{ if has_s3_bucket },
+    {
+      "Sid": "ArchiveReports",
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "${s3_bucket_arn}",
+        "${s3_bucket_arn}/*"
+      ]
+    }%{ endif }
+  ]
+}
