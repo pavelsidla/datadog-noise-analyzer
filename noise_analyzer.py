@@ -70,8 +70,8 @@ def get_datadog_credentials() -> tuple[str, str]:
     Get Datadog API and App keys.
 
     Priority:
-    1. DD_API_KEY / DD_APP_KEY environment variables (simplest for hackathon)
-    2. AWS Secrets Manager at make/infra/shared/datadog (production pattern)
+    1. DD_API_KEY / DD_APP_KEY environment variables (local dev / dry-run)
+    2. AWS Secrets Manager — secret ARN read from DATADOG_SECRET_ARN env var
     """
     api_key = os.environ.get("DD_API_KEY")
     app_key = os.environ.get("DD_APP_KEY")
@@ -80,6 +80,11 @@ def get_datadog_credentials() -> tuple[str, str]:
         return api_key, app_key
 
     # Try AWS Secrets Manager
+    secret_id = os.environ.get("DATADOG_SECRET_ARN")
+    if not secret_id:
+        print("DATADOG_SECRET_ARN env var not set and DD_API_KEY/DD_APP_KEY missing.", file=sys.stderr)
+        sys.exit(1)
+
     try:
         import boto3
 
@@ -88,13 +93,12 @@ def get_datadog_credentials() -> tuple[str, str]:
         client = session.client("secretsmanager", region_name="eu-west-1")
 
         print("Fetching Datadog credentials from AWS Secrets Manager...", file=sys.stderr)
-        secret = client.get_secret_value(SecretId="make/infra/shared/datadog")
+        secret = client.get_secret_value(SecretId=secret_id)
         data = json.loads(secret["SecretString"])
         return data["api_key"], data["app_key"]
 
     except Exception as e:
         print(f"Failed to get credentials from Secrets Manager: {e}", file=sys.stderr)
-        print("Set DD_API_KEY and DD_APP_KEY environment variables.", file=sys.stderr)
         sys.exit(1)
 
 
