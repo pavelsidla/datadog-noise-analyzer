@@ -59,13 +59,11 @@ https://make.atlassian.net/wiki/x/GgCHqg
 2. **FETCH HISTORY** — Alert + recovery events per monitor, last 90 days (8 threads in parallel)
 3. **CLASSIFY** — Noisy (>50 alerts/90d), Dead (0 alerts), Slow (avg MTTR >4h), Healthy
 4. **COMPUTE MTTR** — Pair alert→recovery events per monitor (native Datadog cannot do this)
-5. **CLAUDE AI** — Generate actionable recommendations for noisy and slow monitors
-6. **PUBLISH** — Post 1,913 custom metrics to Datadog via v2 MetricsAPI
-7. **ARCHIVE** — Save report.md + stats.json + ai-recommendations.md to S3
+5. **PUBLISH** — Post custom metrics to Datadog via v2 MetricsAPI
 
 ### Schedule
 
-Weekly cron: `0 6 ? * MON *` (every Monday 06:00 UTC)
+Weekly cron: `cron(30 8 ? * MON *)` (every Monday 08:30 UTC — before oncall rota handover at 09:00)
 
 ### Custom metrics produced
 
@@ -81,12 +79,27 @@ Weekly cron: `0 6 ? * MON *` (every Monday 06:00 UTC)
 
 **Total: 1,913 timeseries per run · ~7,652/month**
 
-### Key open decisions (confirm before implementing)
+## Resolved decisions (from Confluence comments — March 2026)
 
-- Tag convention: `env:production` or `environment:production`? Confirm in Datadog.
-- Metric namespace: `custom.monitor.*` or `make.monitor.*`?
-- AWS account + region (assumed `eu-west-1`)
-- S3 bucket name and retention policy
+| Topic | Decision |
+|-------|---------|
+| Schedule | Every Monday 08:30 UTC — `cron(30 8 ? * MON *)` — before oncall rota handover at 09:00 |
+| Environment filter | `env:production` + `env:production-pi` only. Configurable via `monitor_envs` Terraform variable |
+| API Gateway trigger | No — weekly cron only |
+| VPC deployment | Yes — follow `make-infra/modules/datadog_lambda` pattern. Use `vpc_subnet_ids` + `security_group_ids` vars |
+| Lambda zip | Vendored at `modules/noise-analyzer/lambda.zip` for first iteration. Build with `scripts/build_lambda.sh` |
+| Dashboard location | make-infra Terraform repo (not this repo). `dashboard/dashboard.tf` here is a reference template |
+| Metric namespace | `custom.monitor.*` confirmed |
+| Tag convention | `env:production` and `env:production-pi` |
+| Noisy threshold | 50 alerts/90d default, configurable via `noisy_threshold` Terraform variable |
+| Dead monitors | Flag only — no auto-PR in first iteration |
+| Claude AI recommendations | NOT in first iteration — metrics and dashboard only |
+| S3 archiving | NOT in first iteration — metrics and dashboard only |
+| Health score alerting | No paging — dashboard visibility only |
+| AWS account | Infrastructure account |
+| Datadog credentials | Shared service account via Secrets Manager — same pattern as `make-infra/modules/datadog_lambda` |
+| Release env | Not included |
+| Per-monitor trend | Yes — visible in dashboard after 4+ weekly runs |
 
 ---
 
@@ -111,7 +124,7 @@ scripts/build_lambda.sh    Builds src/lambda.zip for deployment
 
 ```bash
 pip install -r requirements.txt
-export DD_API_KEY=xxx DD_APP_KEY=yyy ANTHROPIC_API_KEY=zzz
+export DD_API_KEY=xxx DD_APP_KEY=yyy
 
 # Dry run (no metrics published)
 python noise_analyzer.py --dry-run --env production --env production-pi
@@ -127,6 +140,7 @@ bash scripts/build_lambda.sh
 
 terraform init && terraform apply \
   -var="datadog_secret_arn=arn:aws:secretsmanager:eu-west-1:ACCOUNT:secret:make/infra/shared/datadog" \
-  -var="schedule_expression=cron(0 6 ? * MON *)" \
-  -var="monitor_envs=[\"production\",\"production-pi\"]"
+  -var='monitor_envs=["production","production-pi"]' \
+  -var='vpc_subnet_ids=["subnet-xxxx","subnet-yyyy"]' \
+  -var='security_group_ids=["sg-xxxx"]'
 ```

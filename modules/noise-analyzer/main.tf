@@ -1,5 +1,5 @@
 locals {
-  lambda_zip        = "${path.module}/../../src/lambda.zip"
+  lambda_zip        = "${path.module}/lambda.zip"
   source_code_hash  = fileexists(local.lambda_zip) ? filebase64sha256(local.lambda_zip) : null
 }
 
@@ -18,14 +18,21 @@ resource "aws_lambda_function" "noise_analyzer" {
   memory_size = var.lambda_memory_mb
 
   environment {
-    variables = merge(
-      {
-        ANALYSIS_DAYS    = tostring(var.analysis_days)
-        MAX_MONITORS     = tostring(var.max_monitors)
-        DRY_RUN          = tostring(var.dry_run)
-      },
-      var.report_s3_bucket != "" ? { REPORT_S3_BUCKET = var.report_s3_bucket } : {}
-    )
+    variables = {
+      ANALYSIS_DAYS         = tostring(var.analysis_days)
+      DRY_RUN               = tostring(var.dry_run)
+      MONITOR_ENVS          = join(",", var.monitor_envs)
+      NOISY_THRESHOLD       = tostring(var.noisy_threshold)
+      SLOW_RESOLUTION_HOURS = tostring(var.slow_resolution_hours)
+    }
+  }
+
+  dynamic "vpc_config" {
+    for_each = length(var.vpc_subnet_ids) > 0 ? [1] : []
+    content {
+      subnet_ids         = var.vpc_subnet_ids
+      security_group_ids = var.security_group_ids
+    }
   }
 
   tags = var.tags
@@ -54,15 +61,19 @@ resource "aws_iam_role_policy" "noise_analyzer" {
   name = "${var.function_name}-policy"
   role = aws_iam_role.noise_analyzer.id
   policy = templatefile("${path.module}/policy.tmpl", {
-    secrets_arn   = var.datadog_secret_arn
-    s3_bucket_arn = var.report_s3_bucket != "" ? "arn:aws:s3:::${var.report_s3_bucket}" : ""
-    has_s3_bucket = var.report_s3_bucket != ""
+    secrets_arn = var.datadog_secret_arn
   })
 }
 
 resource "aws_iam_role_policy_attachment" "basic_execution" {
   role       = aws_iam_role.noise_analyzer.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_iam_role_policy_attachment" "vpc_execution" {
+  count      = length(var.vpc_subnet_ids) > 0 ? 1 : 0
+  role       = aws_iam_role.noise_analyzer.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
 
 # ── CloudWatch Logs ───────────────────────────────────────────────────────────

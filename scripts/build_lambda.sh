@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Build the Lambda deployment package.
 #
-# Output: src/lambda.zip
+# Output: modules/noise-analyzer/lambda.zip
 # Requires: pip3, zip
 #
 # Usage:
@@ -14,7 +14,7 @@ ARCH="${1:-x86_64}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 BUILD_DIR="$PROJECT_ROOT/.build"
-ZIP_PATH="$PROJECT_ROOT/src/lambda.zip"
+ZIP_PATH="$PROJECT_ROOT/modules/noise-analyzer/lambda.zip"
 
 echo "Building Lambda package (arch: $ARCH)..."
 
