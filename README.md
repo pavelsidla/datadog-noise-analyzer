@@ -17,7 +17,7 @@ EventBridge (daily)
                 │
                 ▼
         Datadog Dashboard
-        custom.monitor.*
+        monitor_analyzer.*
 ```
 
 ## Problem
@@ -88,20 +88,20 @@ All metrics are posted daily after each Lambda run.
 
 | Metric | Type | Description |
 |--------|------|-------------|
-| `custom.monitor.alert_count_90d` | GAUGE | Total alerts in analysis period |
-| `custom.monitor.avg_resolution_hours` | GAUGE | Average MTTR in hours |
-| `custom.monitor.is_dead` | GAUGE | `1` if zero alerts/no_data |
-| `custom.monitor.noise_score` | GAUGE | 0-100 composite health score |
+| `monitor_analyzer.alert_count_90d` | GAUGE | Total alerts in analysis period |
+| `monitor_analyzer.avg_resolution_hours` | GAUGE | Average MTTR in hours |
+| `monitor_analyzer.is_dead` | GAUGE | `1` if zero alerts/no_data |
+| `monitor_analyzer.noise_score` | GAUGE | 0-100 composite health score |
 
 ### Summary (tagged: `service:noise-analyzer`)
 
 | Metric | Description |
 |--------|-------------|
-| `custom.monitor.estate_health_score` | % of healthy monitors |
-| `custom.monitor.noisy_count` | Count of noisy monitors |
-| `custom.monitor.dead_count` | Count of dead monitors |
-| `custom.monitor.slow_count` | Count of slow monitors |
-| `custom.monitor.total_analyzed` | Total monitors analyzed |
+| `monitor_analyzer.estate_health_score` | % of healthy monitors |
+| `monitor_analyzer.noisy_count` | Count of noisy monitors |
+| `monitor_analyzer.dead_count` | Count of dead monitors |
+| `monitor_analyzer.slow_count` | Count of slow monitors |
+| `monitor_analyzer.total_analyzed` | Total monitors analyzed |
 
 **Cost note**: ~800 custom metric timeseries/day for 200 monitors. Check your Datadog account's included custom metric quota.
 
@@ -160,7 +160,7 @@ Thresholds are configurable via Terraform variables (`noisy_threshold`, `slow_re
 
 ### Metrics & Dashboard
 - What custom metric quota does the Make Datadog account have? (~800 series/day)
-- Convention for metric namespace: `custom.monitor.*` or `make.monitor.*`?
+- Convention for metric namespace: `monitor_analyzer.*` or `make.monitor.*`?
 - Do we want per-monitor trend timeseries (requires multiple runs), or just latest-state snapshots?
 - Should the dashboard live in `make-infra` Terraform or in this standalone repo?
 
@@ -173,7 +173,7 @@ Thresholds are configurable via Terraform variables (`noisy_threshold`, `slow_re
 ### Operational
 - Which AWS account and region? Same as make-infra (eu-west-1)?
 - Shared Datadog API key (service account) or team-specific?
-- Alert on `custom.monitor.estate_health_score < 70`? Who gets paged?
+- Alert on `monitor_analyzer.estate_health_score < 70`? Who gets paged?
 - S3 report retention: 30 / 90 / 365 days?
 
 ### Future Features
