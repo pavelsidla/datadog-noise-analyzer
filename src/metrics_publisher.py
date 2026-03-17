@@ -70,6 +70,8 @@ def publish_metrics(result: "AnalysisResult", config=None) -> None:
             f"monitor_name:{stats.monitor.name[:100]}",
             f"monitor_type:{stats.monitor.type}",
             f"category:{stats.category}",
+            f"priority:{stats.monitor.priority or 'none'}",
+            f"opsgenie:{'true' if stats.monitor.opsgenie_enabled else 'false'}",
         ]
         noise_score = _compute_noise_score(
             stats.alert_count, stats.avg_resolution_hours, stats.category
@@ -97,12 +99,15 @@ def publish_metrics(result: "AnalysisResult", config=None) -> None:
     healthy_count = len(result.healthy)
     health_score = (healthy_count / total * 100.0) if total > 0 else 0.0
 
+    paging_stats = [s for s in all_stats if s.monitor.opsgenie_enabled]
     summary_metrics = [
         ("monitor_analyzer.estate_health_score", health_score),
         ("monitor_analyzer.noisy_count", float(len(result.noisy))),
         ("monitor_analyzer.dead_count", float(len(result.dead))),
         ("monitor_analyzer.slow_count", float(len(result.slow))),
         ("monitor_analyzer.total_analyzed", float(total)),
+        ("monitor_analyzer.dead_paging_count",  float(sum(1 for s in paging_stats if s.category == "dead"))),
+        ("monitor_analyzer.noisy_paging_count", float(sum(1 for s in paging_stats if s.category == "noisy"))),
     ]
     for metric_name, value in summary_metrics:
         all_series.append(

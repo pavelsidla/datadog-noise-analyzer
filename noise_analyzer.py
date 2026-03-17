@@ -38,6 +38,8 @@ class MonitorInfo:
     query: str
     tags: list[str] = field(default_factory=list)
     message: str = ""
+    priority: Optional[int] = None
+    opsgenie_enabled: bool = False   # True if "@opsgenie" found in monitor message
 
 
 @dataclass
@@ -142,13 +144,16 @@ def list_all_monitors(config, env_filter: Optional[list[str]] = None, name_filte
                     if not fnmatch.fnmatch(m.name.lower(), name_filter.lower()):
                         continue
 
+                msg = m.message if hasattr(m, "message") and m.message else ""
                 monitors.append(MonitorInfo(
                     id=m.id,
                     name=m.name,
                     type=m.type,
                     query=m.query if hasattr(m, "query") and m.query else "",
                     tags=list(m.tags) if m.tags else [],
-                    message=m.message if hasattr(m, "message") and m.message else "",
+                    message=msg,
+                    priority=m.priority if hasattr(m, "priority") and m.priority else None,
+                    opsgenie_enabled="@opsgenie" in msg,
                 ))
 
             if len(result) < 100:
