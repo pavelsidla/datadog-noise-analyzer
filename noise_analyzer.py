@@ -385,6 +385,7 @@ Format as a clean Markdown report with sections.
 Be concise and actionable — this is for engineers, not management.
 """
 
+    import anthropic
     client = anthropic.Anthropic(api_key=api_key)
     response = client.messages.create(
         model="claude-sonnet-4-6",
