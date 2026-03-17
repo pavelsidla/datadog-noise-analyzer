@@ -57,7 +57,7 @@ https://make.atlassian.net/wiki/x/GgCHqg
 
 1. **FETCH + FILTER** — List all 814 monitors, keep only `env:production` + `env:production-pi` = 477
 2. **FETCH HISTORY** — Alert + recovery events per monitor, last 90 days (8 threads in parallel)
-3. **CLASSIFY** — Noisy (>50 alerts/90d), Dead (0 alerts), Slow (avg MTTR >4h), Healthy
+3. **CLASSIFY** — Noisy (>50 alerts/90d), Dead (No Data status), Slow (avg MTTR >4h), Healthy
 4. **COMPUTE MTTR** — Pair alert→recovery events per monitor (native Datadog cannot do this)
 5. **PUBLISH** — Post custom metrics to Datadog via v2 MetricsAPI
 
@@ -92,7 +92,7 @@ Weekly cron: `cron(30 8 ? * MON *)` (every Monday 08:30 UTC — before oncall ro
 | Metric namespace | `monitor_analyzer.*` confirmed |
 | Tag convention | `env:production` and `env:production-pi` |
 | Noisy threshold | 50 alerts/90d default, configurable via `noisy_threshold` Terraform variable |
-| Dead monitors | Flag only — no auto-PR in first iteration |
+| Dead monitors | Flag only — No Data status (metrics not arriving) |
 | Claude AI recommendations | NOT in first iteration — metrics and dashboard only |
 | S3 archiving | NOT in first iteration — metrics and dashboard only |
 | Health score alerting | No paging — dashboard visibility only |

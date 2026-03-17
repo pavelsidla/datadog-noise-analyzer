@@ -185,7 +185,7 @@ resource "datadog_dashboard" "noise_analyzer" {
 
   widget {
     toplist_definition {
-      title = "Dead Monitors — Zero Alerts in 30d"
+      title = "Dead Monitors — No Data Status"
       request {
         q = "top(max:monitor_analyzer.is_dead{*} by {monitor_name,monitor_type,monitor_id}, 25, 'max', 'desc')"
         conditional_formats {

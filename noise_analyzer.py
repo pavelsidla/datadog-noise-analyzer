@@ -262,7 +262,7 @@ def analyze_monitor(config, monitor: MonitorInfo, days: int) -> MonitorStats:
     )
 
     # Categorize
-    if alert_count == 0 and no_data_count == 0:
+    if no_data_count > 0:
         stats.category = "dead"
     elif alert_count > NOISY_THRESHOLD:
         stats.category = "noisy"
