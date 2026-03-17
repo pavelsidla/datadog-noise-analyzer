@@ -4,7 +4,7 @@ Publishes computed monitor health metrics to Datadog via v2 MetricsAPI.
 Custom metrics posted per Lambda run:
 
   Per-monitor (tagged: monitor_id, monitor_name, monitor_type, category):
-    monitor_analyzer.alert_count_90d        — alert count over the analysis period
+    monitor_analyzer.alert_count            — alert count over the analysis period
     monitor_analyzer.avg_resolution_hours   — average MTTR in hours
     monitor_analyzer.is_dead                — 1 if zero alerts/no_data, 0 otherwise
     monitor_analyzer.noise_score            — 0-100 composite health score
@@ -75,8 +75,9 @@ def publish_metrics(result: "AnalysisResult", config=None) -> None:
             stats.alert_count, stats.avg_resolution_hours, stats.category
         )
 
+        env_tags = [t for t in stats.monitor.tags if t.startswith("env:")]
         per_monitor = [
-            ("monitor_analyzer.alert_count_90d", float(stats.alert_count)),
+            ("monitor_analyzer.alert_count", float(stats.alert_count)),
             ("monitor_analyzer.avg_resolution_hours", float(stats.avg_resolution_hours)),
             ("monitor_analyzer.is_dead", 1.0 if stats.category == "dead" else 0.0),
             ("monitor_analyzer.noise_score", noise_score),
@@ -87,7 +88,7 @@ def publish_metrics(result: "AnalysisResult", config=None) -> None:
                     metric=metric_name,
                     type=MetricIntakeType.GAUGE,
                     points=[MetricPoint(timestamp=now, value=value)],
-                    tags=monitor_tags,
+                    tags=monitor_tags + env_tags,
                 )
             )
 

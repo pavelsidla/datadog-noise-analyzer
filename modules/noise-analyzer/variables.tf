@@ -24,7 +24,7 @@ variable "lambda_memory_mb" {
 variable "analysis_days" {
   description = "Number of days of monitor event history to analyze"
   type        = number
-  default     = 90
+  default     = 30
 }
 
 variable "noisy_threshold" {
