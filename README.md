@@ -189,3 +189,5 @@ Thresholds are configurable via Terraform variables (`noisy_threshold`, `slow_re
 - AWS CLI configured with access to `make/infra/shared/datadog` Secrets Manager secret
 - Datadog API key + App key
 - Anthropic API key (optional, for AI recommendations)
+
+## Notes
