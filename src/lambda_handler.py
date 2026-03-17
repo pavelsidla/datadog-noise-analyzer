@@ -67,7 +67,7 @@ def lambda_handler(event: dict, context) -> dict:
     # Publish custom metrics to Datadog
     if not dry_run:
         try:
-            publish_metrics(result)
+            publish_metrics(result, config)
             print("Published custom metrics to Datadog")
         except Exception as e:
             print(f"Warning: Failed to publish metrics: {e}")

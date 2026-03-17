@@ -41,7 +41,7 @@ def _compute_noise_score(alert_count: int, avg_resolution_hours: float, category
     return max(0.0, score)
 
 
-def publish_metrics(result: "AnalysisResult") -> None:
+def publish_metrics(result: "AnalysisResult", config=None) -> None:
     """Build and submit all custom metrics to Datadog in batches."""
     try:
         from datadog_api_client import ApiClient, Configuration
@@ -53,9 +53,10 @@ def publish_metrics(result: "AnalysisResult") -> None:
     except ImportError as e:
         raise ImportError(f"datadog-api-client not installed: {e}") from e
 
-    config = Configuration()
-    config.api_key["apiKeyAuth"] = os.environ.get("DD_API_KEY", "")
-    config.api_key["appKeyAuth"] = os.environ.get("DD_APP_KEY", "")
+    if config is None:
+        config = Configuration()
+        config.api_key["apiKeyAuth"] = os.environ.get("DD_API_KEY", "")
+        config.api_key["appKeyAuth"] = os.environ.get("DD_APP_KEY", "")
 
     now = int(time.time())
     all_series: list = []
