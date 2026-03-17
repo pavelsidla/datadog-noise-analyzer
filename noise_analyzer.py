@@ -405,7 +405,7 @@ def get_mock_monitors() -> list[MonitorInfo]:
 
 def main():
     parser = argparse.ArgumentParser(description="Analyze Datadog alert noise")
-    parser.add_argument("--days", type=int, default=90, help="Analysis period in days (default: 90)")
+    parser.add_argument("--days", type=int, default=30, help="Analysis period in days (default: 30)")
     parser.add_argument("--output", default="-", help="Output file path (default: stdout)")
     parser.add_argument("--dry-run", action="store_true", help="Use mock data, don't call Datadog API")
     parser.add_argument("--filter", help="Filter monitors by name pattern (e.g. 'rds_*')")

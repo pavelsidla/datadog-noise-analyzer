@@ -37,7 +37,7 @@ from metrics_publisher import publish_metrics
 def lambda_handler(event: dict, context) -> dict:
     """Main Lambda entry point."""
     dry_run = event.get("dry_run", os.environ.get("DRY_RUN", "false").lower() == "true")
-    days = int(event.get("days", os.environ.get("ANALYSIS_DAYS", "90")))
+    days = int(event.get("days", os.environ.get("ANALYSIS_DAYS", "30")))
     max_monitors = int(event.get("max_monitors", os.environ.get("MAX_MONITORS", "200")))
     monitor_envs_raw = os.environ.get("MONITOR_ENVS", "production,production-pi")
     env_filter = [e.strip() for e in monitor_envs_raw.split(",") if e.strip()]

@@ -130,9 +130,9 @@ resource "datadog_dashboard" "noise_analyzer" {
 
   widget {
     toplist_definition {
-      title = "Top Noisy Monitors — Alert Count (90d)"
+      title = "Top Noisy Monitors — Alert Count (30d)"
       request {
-        q = "top(max:monitor_analyzer.alert_count_90d{*} by {monitor_name}, 20, 'max', 'desc')"
+        q = "top(max:monitor_analyzer.alert_count{*} by {monitor_name,monitor_id}, 20, 'max', 'desc')"
         conditional_formats {
           comparator = ">"
           value      = 100
@@ -149,6 +149,10 @@ resource "datadog_dashboard" "noise_analyzer" {
           palette    = "white_on_green"
         }
       }
+      custom_link {
+        label = "Open in Datadog"
+        link  = "https://app.datadoghq.com/monitors/{{monitor_id.value}}"
+      }
     }
   }
 
@@ -158,7 +162,7 @@ resource "datadog_dashboard" "noise_analyzer" {
     toplist_definition {
       title = "Slowest Resolving Monitors — Avg MTTR (hours)"
       request {
-        q = "top(max:monitor_analyzer.avg_resolution_hours{category:slow} by {monitor_name}, 15, 'max', 'desc')"
+        q = "top(max:monitor_analyzer.avg_resolution_hours{category:slow} by {monitor_name,monitor_id}, 15, 'max', 'desc')"
         conditional_formats {
           comparator = ">"
           value      = 8
@@ -170,6 +174,10 @@ resource "datadog_dashboard" "noise_analyzer" {
           palette    = "white_on_yellow"
         }
       }
+      custom_link {
+        label = "Open in Datadog"
+        link  = "https://app.datadoghq.com/monitors/{{monitor_id.value}}"
+      }
     }
   }
 
@@ -177,14 +185,18 @@ resource "datadog_dashboard" "noise_analyzer" {
 
   widget {
     toplist_definition {
-      title = "Dead Monitors — Zero Alerts in 90d"
+      title = "Dead Monitors — Zero Alerts in 30d"
       request {
-        q = "top(max:monitor_analyzer.is_dead{*} by {monitor_name,monitor_type}, 25, 'max', 'desc')"
+        q = "top(max:monitor_analyzer.is_dead{*} by {monitor_name,monitor_type,monitor_id}, 25, 'max', 'desc')"
         conditional_formats {
           comparator = ">"
           value      = 0
           palette    = "white_on_yellow"
         }
+      }
+      custom_link {
+        label = "Open in Datadog"
+        link  = "https://app.datadoghq.com/monitors/{{monitor_id.value}}"
       }
     }
   }
@@ -195,7 +207,7 @@ resource "datadog_dashboard" "noise_analyzer" {
     toplist_definition {
       title = "Worst Noise Score (0 = worst, 100 = healthy)"
       request {
-        q = "top(avg:monitor_analyzer.noise_score{*} by {monitor_name}, 20, 'min', 'asc')"
+        q = "top(avg:monitor_analyzer.noise_score{*} by {monitor_name,monitor_id}, 20, 'min', 'asc')"
         conditional_formats {
           comparator = "<"
           value      = 30
@@ -211,6 +223,10 @@ resource "datadog_dashboard" "noise_analyzer" {
           value      = 60
           palette    = "white_on_green"
         }
+      }
+      custom_link {
+        label = "Open in Datadog"
+        link  = "https://app.datadoghq.com/monitors/{{monitor_id.value}}"
       }
     }
   }
