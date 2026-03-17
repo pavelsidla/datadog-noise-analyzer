@@ -199,16 +199,20 @@ def get_monitor_state(config, monitor_id: int, days: int) -> dict:
             if m.state and m.state.groups:
                 raw_groups = {name: g.to_dict() for name, g in m.state.groups.items()}
 
+            # Only count groups currently in Alert (critical) state.
+            # Warn-state groups are excluded — OpsGenie is only paged on Alert,
+            # so Warn triggers are noise we do not care about.
             triggered_in_period = [
                 g for g in raw_groups.values()
                 if (g.get("last_triggered_ts") or 0) > cutoff
+                and str(g.get("status", "")).lower() == "alert"
             ]
 
             resolved_pairs = []
             for g in raw_groups.values():
                 t = g.get("last_triggered_ts") or 0
                 r = g.get("last_resolved_ts") or 0
-                if t > cutoff and r > t:
+                if t > cutoff and r > t and str(g.get("status", "")).lower() != "warn":
                     resolved_pairs.append((t, r))
 
             return {
