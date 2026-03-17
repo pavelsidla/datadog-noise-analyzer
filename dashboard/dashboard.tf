@@ -27,7 +27,7 @@ resource "datadog_dashboard" "noise_analyzer" {
           autoscale   = true
           precision   = 0
           request {
-            q          = "avg:custom.monitor.total_analyzed{*}"
+            q          = "avg:monitor_analyzer.total_analyzed{*}"
             aggregator = "last"
           }
         }
@@ -41,7 +41,7 @@ resource "datadog_dashboard" "noise_analyzer" {
           autoscale   = true
           precision   = 1
           request {
-            q          = "avg:custom.monitor.estate_health_score{*}"
+            q          = "avg:monitor_analyzer.estate_health_score{*}"
             aggregator = "last"
             conditional_formats {
               comparator = ">="
@@ -70,7 +70,7 @@ resource "datadog_dashboard" "noise_analyzer" {
           autoscale   = true
           precision   = 0
           request {
-            q          = "avg:custom.monitor.noisy_count{*}"
+            q          = "avg:monitor_analyzer.noisy_count{*}"
             aggregator = "last"
             conditional_formats {
               comparator = ">"
@@ -94,7 +94,7 @@ resource "datadog_dashboard" "noise_analyzer" {
           autoscale   = true
           precision   = 0
           request {
-            q          = "avg:custom.monitor.dead_count{*}"
+            q          = "avg:monitor_analyzer.dead_count{*}"
             aggregator = "last"
             conditional_formats {
               comparator = ">"
@@ -113,7 +113,7 @@ resource "datadog_dashboard" "noise_analyzer" {
           autoscale   = true
           precision   = 0
           request {
-            q          = "avg:custom.monitor.slow_count{*}"
+            q          = "avg:monitor_analyzer.slow_count{*}"
             aggregator = "last"
             conditional_formats {
               comparator = ">"
@@ -132,7 +132,7 @@ resource "datadog_dashboard" "noise_analyzer" {
     toplist_definition {
       title = "Top Noisy Monitors — Alert Count (90d)"
       request {
-        q = "top(max:custom.monitor.alert_count_90d{*} by {monitor_name}, 20, 'max', 'desc')"
+        q = "top(max:monitor_analyzer.alert_count_90d{*} by {monitor_name}, 20, 'max', 'desc')"
         conditional_formats {
           comparator = ">"
           value      = 100
@@ -158,7 +158,7 @@ resource "datadog_dashboard" "noise_analyzer" {
     toplist_definition {
       title = "Slowest Resolving Monitors — Avg MTTR (hours)"
       request {
-        q = "top(max:custom.monitor.avg_resolution_hours{category:slow} by {monitor_name}, 15, 'max', 'desc')"
+        q = "top(max:monitor_analyzer.avg_resolution_hours{category:slow} by {monitor_name}, 15, 'max', 'desc')"
         conditional_formats {
           comparator = ">"
           value      = 8
@@ -179,7 +179,7 @@ resource "datadog_dashboard" "noise_analyzer" {
     toplist_definition {
       title = "Dead Monitors — Zero Alerts in 90d"
       request {
-        q = "top(max:custom.monitor.is_dead{*} by {monitor_name,monitor_type}, 25, 'max', 'desc')"
+        q = "top(max:monitor_analyzer.is_dead{*} by {monitor_name,monitor_type}, 25, 'max', 'desc')"
         conditional_formats {
           comparator = ">"
           value      = 0
@@ -195,7 +195,7 @@ resource "datadog_dashboard" "noise_analyzer" {
     toplist_definition {
       title = "Worst Noise Score (0 = worst, 100 = healthy)"
       request {
-        q = "top(avg:custom.monitor.noise_score{*} by {monitor_name}, 20, 'min', 'asc')"
+        q = "top(avg:monitor_analyzer.noise_score{*} by {monitor_name}, 20, 'min', 'asc')"
         conditional_formats {
           comparator = "<"
           value      = 30
@@ -224,7 +224,7 @@ resource "datadog_dashboard" "noise_analyzer" {
       legend_layout = "auto"
 
       request {
-        q            = "avg:custom.monitor.estate_health_score{*}"
+        q            = "avg:monitor_analyzer.estate_health_score{*}"
         display_type = "line"
         style {
           palette    = "green"
@@ -232,31 +232,31 @@ resource "datadog_dashboard" "noise_analyzer" {
           line_width = "thick"
         }
         metadata {
-          expression = "avg:custom.monitor.estate_health_score{*}"
+          expression = "avg:monitor_analyzer.estate_health_score{*}"
           alias_name = "Health Score %"
         }
       }
 
       request {
-        q            = "avg:custom.monitor.noisy_count{*}"
+        q            = "avg:monitor_analyzer.noisy_count{*}"
         display_type = "bars"
         style {
           palette = "warm"
         }
         metadata {
-          expression = "avg:custom.monitor.noisy_count{*}"
+          expression = "avg:monitor_analyzer.noisy_count{*}"
           alias_name = "Noisy"
         }
       }
 
       request {
-        q            = "avg:custom.monitor.dead_count{*}"
+        q            = "avg:monitor_analyzer.dead_count{*}"
         display_type = "bars"
         style {
           palette = "cool"
         }
         metadata {
-          expression = "avg:custom.monitor.dead_count{*}"
+          expression = "avg:monitor_analyzer.dead_count{*}"
           alias_name = "Dead"
         }
       }

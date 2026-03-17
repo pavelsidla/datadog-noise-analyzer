@@ -4,17 +4,17 @@ Publishes computed monitor health metrics to Datadog via v2 MetricsAPI.
 Custom metrics posted per Lambda run:
 
   Per-monitor (tagged: monitor_id, monitor_name, monitor_type, category):
-    custom.monitor.alert_count_90d        — alert count over the analysis period
-    custom.monitor.avg_resolution_hours   — average MTTR in hours
-    custom.monitor.is_dead                — 1 if zero alerts/no_data, 0 otherwise
-    custom.monitor.noise_score            — 0-100 composite health score
+    monitor_analyzer.alert_count_90d        — alert count over the analysis period
+    monitor_analyzer.avg_resolution_hours   — average MTTR in hours
+    monitor_analyzer.is_dead                — 1 if zero alerts/no_data, 0 otherwise
+    monitor_analyzer.noise_score            — 0-100 composite health score
 
   Summary (tagged: service:noise-analyzer):
-    custom.monitor.estate_health_score    — % of healthy monitors
-    custom.monitor.noisy_count            — count of noisy monitors
-    custom.monitor.dead_count             — count of dead monitors
-    custom.monitor.slow_count             — count of slow monitors
-    custom.monitor.total_analyzed         — total monitors analyzed
+    monitor_analyzer.estate_health_score    — % of healthy monitors
+    monitor_analyzer.noisy_count            — count of noisy monitors
+    monitor_analyzer.dead_count             — count of dead monitors
+    monitor_analyzer.slow_count             — count of slow monitors
+    monitor_analyzer.total_analyzed         — total monitors analyzed
 """
 import os
 import time
@@ -76,10 +76,10 @@ def publish_metrics(result: "AnalysisResult", config=None) -> None:
         )
 
         per_monitor = [
-            ("custom.monitor.alert_count_90d", float(stats.alert_count)),
-            ("custom.monitor.avg_resolution_hours", float(stats.avg_resolution_hours)),
-            ("custom.monitor.is_dead", 1.0 if stats.category == "dead" else 0.0),
-            ("custom.monitor.noise_score", noise_score),
+            ("monitor_analyzer.alert_count_90d", float(stats.alert_count)),
+            ("monitor_analyzer.avg_resolution_hours", float(stats.avg_resolution_hours)),
+            ("monitor_analyzer.is_dead", 1.0 if stats.category == "dead" else 0.0),
+            ("monitor_analyzer.noise_score", noise_score),
         ]
         for metric_name, value in per_monitor:
             all_series.append(
@@ -97,11 +97,11 @@ def publish_metrics(result: "AnalysisResult", config=None) -> None:
     health_score = (healthy_count / total * 100.0) if total > 0 else 0.0
 
     summary_metrics = [
-        ("custom.monitor.estate_health_score", health_score),
-        ("custom.monitor.noisy_count", float(len(result.noisy))),
-        ("custom.monitor.dead_count", float(len(result.dead))),
-        ("custom.monitor.slow_count", float(len(result.slow))),
-        ("custom.monitor.total_analyzed", float(total)),
+        ("monitor_analyzer.estate_health_score", health_score),
+        ("monitor_analyzer.noisy_count", float(len(result.noisy))),
+        ("monitor_analyzer.dead_count", float(len(result.dead))),
+        ("monitor_analyzer.slow_count", float(len(result.slow))),
+        ("monitor_analyzer.total_analyzed", float(total)),
     ]
     for metric_name, value in summary_metrics:
         all_series.append(

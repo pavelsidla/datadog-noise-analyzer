@@ -67,15 +67,15 @@ Weekly cron: `cron(30 8 ? * MON *)` (every Monday 08:30 UTC — before oncall ro
 
 ### Custom metrics produced
 
-- `custom.monitor.alert_count_90d` — per monitor
-- `custom.monitor.avg_resolution_hours` — per monitor
-- `custom.monitor.is_dead` — per monitor
-- `custom.monitor.noise_score` — per monitor
-- `custom.monitor.estate_health_score` — summary
-- `custom.monitor.noisy_count` — summary
-- `custom.monitor.dead_count` — summary
-- `custom.monitor.slow_count` — summary
-- `custom.monitor.total_analyzed` — summary
+- `monitor_analyzer.alert_count_90d` — per monitor
+- `monitor_analyzer.avg_resolution_hours` — per monitor
+- `monitor_analyzer.is_dead` — per monitor
+- `monitor_analyzer.noise_score` — per monitor
+- `monitor_analyzer.estate_health_score` — summary
+- `monitor_analyzer.noisy_count` — summary
+- `monitor_analyzer.dead_count` — summary
+- `monitor_analyzer.slow_count` — summary
+- `monitor_analyzer.total_analyzed` — summary
 
 **Total: 1,913 timeseries per run · ~7,652/month**
 
@@ -89,7 +89,7 @@ Weekly cron: `cron(30 8 ? * MON *)` (every Monday 08:30 UTC — before oncall ro
 | VPC deployment | Yes — follow `make-infra/modules/datadog_lambda` pattern. Use `vpc_subnet_ids` + `security_group_ids` vars |
 | Lambda zip | Vendored at `modules/noise-analyzer/lambda.zip` for first iteration. Build with `scripts/build_lambda.sh` |
 | Dashboard location | make-infra Terraform repo (not this repo). `dashboard/dashboard.tf` here is a reference template |
-| Metric namespace | `custom.monitor.*` confirmed |
+| Metric namespace | `monitor_analyzer.*` confirmed |
 | Tag convention | `env:production` and `env:production-pi` |
 | Noisy threshold | 50 alerts/90d default, configurable via `noisy_threshold` Terraform variable |
 | Dead monitors | Flag only — no auto-PR in first iteration |

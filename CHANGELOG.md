@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - Initial Lambda-based architecture with EventBridge daily trigger
-- Custom Datadog metrics: `custom.monitor.*` for noise score, alert count, MTTR, dead detection
+- Custom Datadog metrics: `monitor_analyzer.*` for noise score, alert count, MTTR, dead detection
 - Terraform module (`modules/noise-analyzer`) with IAM, Lambda, EventBridge resources
 - Datadog dashboard in Terraform (`dashboard/dashboard.tf`)
 - Concurrent monitor analysis with `ThreadPoolExecutor` (8 workers)
